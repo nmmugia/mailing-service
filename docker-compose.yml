@@ -1,23 +1,25 @@
 version : '3'
 services:
   db:
-    image: postgres
+    image: postgres:14.1-alpine
+    volumes:
+      - db:/var/lib/postgresql/data
     restart: always
-    container_name: db
+    container_name: db_mailing
     ports:
-      - 5432:5432
+      - 5433:5432
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: mailing
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     networks:
       - mailing-networks
 
   redis:
     image: redis
-    container_name: redis
+    container_name: redis_mailing
     ports:
-      - 6379:6379
+      - 6380:6379
     networks:
       - mailing-networks
 
@@ -27,7 +29,7 @@ services:
       context: .
       dockerfile: Dockerfile
     command: bash -c "python manage.py init_database && python manage.py run -h 0.0.0.0"
-    container_name: backend
+    container_name: backend_mailing
     ports:
       - 5000:5000
     networks:
@@ -44,13 +46,15 @@ services:
         context: .
         dockerfile: Dockerfile
     command: bash -c "celery -A scheduler.main.celery_app worker --loglevel=INFO"
-    container_name: worker
+    container_name: worker_mailing
     networks:
       - mailing-networks
     depends_on:
       - backend
       - redis
-    
+
+volumes:
+    db:
 
 networks:
   mailing-networks:
