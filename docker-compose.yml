@@ -1,0 +1,57 @@
+version : '3'
+services:
+  db:
+    image: postgres
+    restart: always
+    container_name: db
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+    networks:
+      - mailing-networks
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - 6379:6379
+    networks:
+      - mailing-networks
+
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: bash -c "python manage.py init_database && python manage.py run -h 0.0.0.0"
+    container_name: backend
+    ports:
+      - 5000:5000
+    networks:
+      - mailing-networks
+    depends_on:
+      - db
+      - redis
+    links:
+      - db:db
+      - redis:redis
+
+  worker:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    command: bash -c "celery -A scheduler.main.celery_app worker --loglevel=INFO"
+    container_name: worker
+    networks:
+      - mailing-networks
+    depends_on:
+      - backend
+      - redis
+    
+
+networks:
+  mailing-networks:
+    driver: bridge
